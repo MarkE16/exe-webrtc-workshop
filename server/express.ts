@@ -5,8 +5,8 @@ import express from "express";
 // The API key and secret for your LiveKit deployment
 // Note that they're set here as constants for the workshop,
 // but you should securely store them in environment variables in a real application.
-const KEY = "APItbb9mDsB9wA3";
-const SECRET = "bxdeRkUXtdAixfVEevxLxFAv9jUJrSOLFAioWTblDrKB";
+const KEY = "";
+const SECRET = "";
 
 const app = express();
 const PORT = 3000;

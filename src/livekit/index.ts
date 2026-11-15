@@ -56,6 +56,10 @@ const LIVEKIT = {
     return Array.from(room.remoteParticipants.values());
   },
 
+  setParticipantVolume(identity: string, volume: number) {
+    room.remoteParticipants.get(identity)?.setVolume(volume);
+  },
+
   /* Event handlers */
 
   handleTrackSubcribed(fn: (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => void) {
@@ -74,7 +78,7 @@ const LIVEKIT = {
     }
   },
 
-  handleActiveSpeakersChanged(fn: (speakders: Participant[]) => void) {
+  handleActiveSpeakersChanged(fn: (speakers: Participant[]) => void) {
     room.on(RoomEvent.ActiveSpeakersChanged, fn);
 
     return function unsubscribe() {

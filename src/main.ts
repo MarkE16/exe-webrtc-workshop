@@ -2,6 +2,8 @@ import './style.css'
 import './call-ui.css'
 import './media-state.css'
 import './speaking-state.css'
+import './participant-volume.css'
+import './stage-participants.css'
 import { addParticipant, addVideoElement, initUI, removeParticipant, removeVideoElement, setSpeakingParticipants } from './ui-helpers'
 import LIVEKIT from './livekit'
 import { Track } from 'livekit-client'
@@ -50,10 +52,10 @@ window.addEventListener("DOMContentLoaded", function () {
   initUI(app, handleJoin, (state) => LIVEKIT.setSettings(state));
 
   unsubscribeFns.push(
-    LIVEKIT.handleTrackSubcribed(function (track, _publication, _participant) {
+    LIVEKIT.handleTrackSubcribed(function (track, _publication, participant) {
       const element = track.attach();
       if (track.kind === Track.Kind.Video) {
-        addVideoElement(element);
+        addVideoElement(element, participant.identity, participant.name || participant.identity);
       }
     }),
 
@@ -77,7 +79,9 @@ window.addEventListener("DOMContentLoaded", function () {
     }),
 
     LIVEKIT.handleParticipantConnected(function (participant) {
-      addParticipant(participant.identity, participant.name || participant.identity);
+      addParticipant(participant.identity, participant.name || participant.identity, (volume) => {
+        LIVEKIT.setParticipantVolume(participant.identity, volume);
+      });
     }),
 
     LIVEKIT.handleParticipantDisconnected(function (participant) {
@@ -88,7 +92,9 @@ window.addEventListener("DOMContentLoaded", function () {
       // get existing participants
       const participants = LIVEKIT.getExistingParticipants();
       for (const participant of participants) {
-        addParticipant(participant.identity, participant.name || participant.identity);
+        addParticipant(participant.identity, participant.name || participant.identity, (volume) => {
+          LIVEKIT.setParticipantVolume(participant.identity, volume);
+        });
       }
     }),
 

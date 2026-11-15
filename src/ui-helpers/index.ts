@@ -13,7 +13,7 @@ function callMarkup(name: string, mode: 'voice' | 'video') {
     <header class="call-topbar"><a class="brand" href="/" aria-label="Gather home"><span class="brand-mark">✳</span> gather<span class="brand-dot">.</span></a><div class="room-name"><span class="live-dot"></span> THE COMMON ROOM <span class="call-time">00:00</span></div><button class="quiet-button" type="button">•••</button></header>
     <main class="call-shell ${isVideo ? 'video-call' : 'voice-call'}">
       <section class="call-stage" aria-label="Call in progress">
-        ${isVideo ? `<div class="remote-video"><div class="remote-placeholder"><span>✳</span><p>Waiting for others to join</p></div><span class="stage-label">THE COMMON ROOM</span></div><div class="self-video" data-participant-id="${name}"><div class="self-avatar">${name.slice(0, 1).toUpperCase()}</div><span>You</span><i class="speaking-badge">Speaking</i></div>` : `<div class="voice-orbit" data-participant-id="${name}"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit-avatar">${name.slice(0, 1).toUpperCase()}</div></div><p class="voice-status">You’re the only one here</p><p class="voice-hint">Invite someone to begin the conversation.</p>`}
+        ${isVideo ? `<div class="remote-video"><div class="remote-placeholder"><span>✳</span><p>Waiting for others to join</p></div><div class="stage-participants"></div><span class="stage-label">THE COMMON ROOM</span></div><div class="self-video" data-participant-id="${name}"><div class="self-avatar">${name.slice(0, 1).toUpperCase()}</div><span>You</span><i class="speaking-badge">Speaking</i></div>` : `<div class="voice-orbit" data-participant-id="${name}"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit-avatar">${name.slice(0, 1).toUpperCase()}</div></div><div class="voice-remote-participants"></div><p class="voice-status">You’re the only one here</p><p class="voice-hint">Invite someone to begin the conversation.</p>`}
       </section>
       <aside class="call-sidebar"><div class="sidebar-heading"><div><span class="eyebrow"><span></span> IN THE ROOM</span><h2>People</h2></div><span class="count">1</span></div><div class="participant" data-participant-id="${name}"><span class="participant-avatar">${name.slice(0, 1).toUpperCase()}</span><span><strong>${name}</strong><small>You</small></span><span class="mic-state">⌁</span><i class="speaking-badge">Speaking</i></div></aside>
     </main>
@@ -49,9 +49,34 @@ function addMediaStateHelpers(initialState: MediaState, onMediaStateChange?: Med
 
 function setSpeakingParticipants(activeParticipantIds: string[]) {
   const activeIds = new Set(activeParticipantIds)
-  document.querySelectorAll<HTMLElement>('[data-participant-id]').forEach((element) => {
-    element.classList.toggle('is-speaking', activeIds.has(element.dataset.participantId!))
+  document.querySelectorAll<HTMLElement>('[data-participant-id], [data-stage-participant-id]').forEach((element) => {
+    const identity = element.dataset.participantId ?? element.dataset.stageParticipantId
+    element.classList.toggle('is-speaking', activeIds.has(identity!))
   })
+}
+
+function addStageParticipant(identity: string, displayName: string) {
+  if (document.querySelector(`[data-stage-participant-id="${CSS.escape(identity)}"]`)) return
+  const initial = displayName.trim().charAt(0).toUpperCase() || '?'
+  const voiceContainer = document.querySelector<HTMLElement>('.voice-remote-participants')
+  const videoContainer = document.querySelector<HTMLElement>('.stage-participants')
+  const stageParticipant = document.createElement('div')
+  stageParticipant.className = voiceContainer ? 'voice-person' : 'stage-person'
+  stageParticipant.dataset.stageParticipantId = identity
+  stageParticipant.innerHTML = `<span class="stage-avatar"></span><strong></strong><i class="speaking-badge">Speaking</i>`
+  stageParticipant.querySelector('.stage-avatar')!.textContent = initial
+  stageParticipant.querySelector('strong')!.textContent = displayName
+  ;(voiceContainer ?? videoContainer)?.appendChild(stageParticipant)
+  updateStageStatus()
+}
+
+function updateStageStatus() {
+  const status = document.querySelector<HTMLElement>('.voice-status')
+  const hint = document.querySelector<HTMLElement>('.voice-hint')
+  if (!status || !hint) return
+  const remoteCount = document.querySelectorAll('.voice-person').length
+  status.textContent = remoteCount ? `${remoteCount + 1} people in the room` : 'You’re the only one here'
+  hint.textContent = remoteCount ? 'Your conversation is live.' : 'Invite someone to begin the conversation.'
 }
 
 function updateParticipantCount() {
@@ -59,7 +84,7 @@ function updateParticipantCount() {
   if (count) count.textContent = String(document.querySelectorAll('.participant').length)
 }
 
-function addParticipant(identity: string, displayName = identity) {
+function addParticipant(identity: string, displayName = identity, onVolumeChange?: (volume: number) => void) {
   if (document.querySelector(`[data-participant-id="${CSS.escape(identity)}"]`)) return
   const sidebar = document.querySelector<HTMLElement>('.call-sidebar')
   if (!sidebar) return
@@ -68,9 +93,18 @@ function addParticipant(identity: string, displayName = identity) {
   participant.className = 'participant'
   participant.dataset.participantId = identity
   const initial = displayName.trim().charAt(0).toUpperCase() || '?'
-  participant.innerHTML = `<span class="participant-avatar">${initial}</span><span><strong></strong><small>Connected</small></span><span class="mic-state">⌁</span><i class="speaking-badge">Speaking</i>`
+  participant.innerHTML = `<span class="participant-avatar"></span><span><strong></strong><small>Connected</small></span><span class="mic-state">⌁</span><i class="speaking-badge">Speaking</i><label class="volume-control"><span>Volume</span><input type="range" min="0" max="100" value="100" aria-label="${displayName} volume"><output>100%</output></label>`
+  participant.querySelector('.participant-avatar')!.textContent = initial
   participant.querySelector('strong')!.textContent = displayName
+  const volumeInput = participant.querySelector<HTMLInputElement>('.volume-control input')!
+  const volumeOutput = participant.querySelector<HTMLOutputElement>('.volume-control output')!
+  volumeInput.addEventListener('input', () => {
+    volumeOutput.value = `${volumeInput.value}%`
+    volumeOutput.textContent = volumeOutput.value
+    onVolumeChange?.(Number(volumeInput.value) / 100)
+  })
   sidebar.appendChild(participant)
+  addStageParticipant(identity, displayName)
   updateParticipantCount()
 }
 
@@ -78,6 +112,8 @@ function removeParticipant(identity: string) {
   document.querySelectorAll<HTMLElement>('[data-participant-id]').forEach((element) => {
     if (element.dataset.participantId === identity && element.classList.contains('participant')) element.remove()
   })
+  document.querySelector(`[data-stage-participant-id="${CSS.escape(identity)}"]`)?.remove()
+  updateStageStatus()
   updateParticipantCount()
 }
 
@@ -96,14 +132,14 @@ function initUI(app: HTMLDivElement, handleJoin: (username: string, usingVideo: 
   })
 }
 
-function addVideoElement(video: HTMLMediaElement) {
-  const remoteVideoContainer = document.querySelector<HTMLDivElement>('.remote-video')!
-  remoteVideoContainer.appendChild(video)  
+function addVideoElement(video: HTMLMediaElement, identity: string, displayName: string) {
+  addStageParticipant(identity, displayName)
+  const stageParticipant = document.querySelector<HTMLElement>(`[data-stage-participant-id="${CSS.escape(identity)}"]`)
+  if (stageParticipant) stageParticipant.appendChild(video)
 }
 
 function removeVideoElement(video: HTMLMediaElement) {
-  const remoteVideoContainer = document.querySelector<HTMLDivElement>('.remote-video')!
-  remoteVideoContainer.removeChild(video)
+  video.remove()
 }
 
 export { initUI, addVideoElement, removeVideoElement, setSpeakingParticipants, addParticipant, removeParticipant }
