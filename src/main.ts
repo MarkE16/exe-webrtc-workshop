@@ -27,18 +27,7 @@ async function handleJoin(username: string, usingVideo: boolean): Promise<void> 
     return;
   }
 
-  try {
-    await LIVEKIT.prepareConnection(token);
-    await LIVEKIT.connect(token);
 
-    await LIVEKIT.setSettings({
-      audio: true,
-      video: usingVideo
-    });
-    console.log('Connected to LiveKit room successfully');
-  } catch (error) {
-    console.error('Error connecting to LiveKit room:', error);
-  }
 }
 
 function cleanup() {
@@ -53,49 +42,31 @@ window.addEventListener("DOMContentLoaded", function () {
 
   unsubscribeFns.push(
     LIVEKIT.handleTrackSubcribed(function (track, _publication, participant) {
-      const element = track.attach();
-      if (track.kind === Track.Kind.Video) {
-        addVideoElement(element, participant.identity, participant.name || participant.identity);
-      }
+      
     }),
 
     LIVEKIT.handleTrackUnsubscribed(function (track, _publication, _participant) {
-      // remove tracks from all attached elements
-      const elements = track.detach();
-      for (const element of elements) {
-        if (track.kind === Track.Kind.Video) {
-          removeVideoElement(element);
-        }
-      }
+      
     }),
 
     LIVEKIT.handleLocalTrackUnpublished(function (publication, _participant) {
-      // when local tracks are ended, update UI to remove them from rendering
-      publication.track?.detach();
+      
     }),
 
     LIVEKIT.handleActiveSpeakersChanged(function (speakers) {
-      setSpeakingParticipants(speakers.map((speaker) => speaker.identity));
+      
     }),
 
     LIVEKIT.handleParticipantConnected(function (participant) {
-      addParticipant(participant.identity, participant.name || participant.identity, (volume) => {
-        LIVEKIT.setParticipantVolume(participant.identity, volume);
-      });
+      
     }),
 
     LIVEKIT.handleParticipantDisconnected(function (participant) {
-      removeParticipant(participant.identity);
+      
     }),
 
     LIVEKIT.handleConnected(function () {
-      // get existing participants
-      const participants = LIVEKIT.getExistingParticipants();
-      for (const participant of participants) {
-        addParticipant(participant.identity, participant.name || participant.identity, (volume) => {
-          LIVEKIT.setParticipantVolume(participant.identity, volume);
-        });
-      }
+      
     }),
 
     LIVEKIT.handleDisconnected(function () {

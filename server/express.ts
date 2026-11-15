@@ -25,25 +25,7 @@ app.get("/token", async (req, res) => {
     return res.status(400).json({ error: "Username is required" });
   }
 
-  // Create an access token for the user
-  const at = new AccessToken(KEY, SECRET, {
-    identity: username,
-    ttl: "1h", // Token valid for 1 hour
-  });
 
-  // See all options at: https://docs.livekit.io/frontends/reference/tokens-grants/#video-grant
-  const vidGrant: VideoGrant = {
-    roomJoin: true,
-    room: "example-room", // For demonstration purposes; this may vary based on your application
-    canPublish: true,
-    canSubscribe: true,
-    canPublishData: true
-  };
-  at.addGrant(vidGrant);
-
-  // Generate a JWT token to be used by the client to connect to LiveKit
-  const jwt = await at.toJwt();
-  res.json({ token: jwt });
 })
 
 app.listen(PORT, () => console.log(`Server is running on http://localhost:${PORT}`));
